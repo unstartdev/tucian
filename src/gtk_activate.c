@@ -2,6 +2,19 @@
 #include "../include/gtk_gui.h"
 #include "../include/fetchrm.h"
 
+/* 读取json member */
+static const char *member_reader(JsonReader *reader, const char *member_name)
+{
+    if (!json_reader_read_member(reader, member_name))
+    {
+        json_reader_end_member(reader);
+        return NULL;
+    }
+    const char *member_value = json_reader_get_string_value(reader);
+    json_reader_end_member(reader);
+    return member_value;
+}
+
 void activate(GtkApplication *app, gpointer user_data)
 {
     GtkWidget *window = gtk_application_window_new(app);
@@ -16,7 +29,6 @@ void activate(GtkApplication *app, gpointer user_data)
     curl_global_cleanup();
     if (td_data)
     {
-        //printf("\n%s\n", json_object_to_json_string(td_data->content));
         JsonReader *reader = json_reader_new(td_data);
         size_t number_of_pics = json_reader_count_elements(reader);
         GtkWidget **imagewg = (GtkWidget **)calloc(number_of_pics, sizeof(GtkWidget *));
@@ -24,16 +36,13 @@ void activate(GtkApplication *app, gpointer user_data)
         {
             if (json_reader_read_element(reader, sel))
             {
-                json_reader_read_member(reader, "PID");
-                char *pic_PID = json_reader_get_string_value(reader);
-                json_reader_end_member(reader);
-                json_reader_read_member(reader, "local_url");
-                char *pic_local_url = json_reader_get_string_value(reader);
-                json_reader_end_member(reader);
-                json_reader_read_member(reader, "nativePath");
-                char *pic_nativePath = json_reader_get_string_value(reader);
-                json_reader_end_member(reader);
-                imagewg[sel] = gtk_image_new_from_file(cache_image(pic_PID, pic_nativePath, pic_local_url));
+                const char *pic_PID  = member_reader(reader, "PID");
+                const char *pic_local_url = member_reader(reader, "local_url");
+                const char *pic_nativePath = member_reader(reader, "nativePath");
+                if (pic_PID && pic_local_url && pic_nativePath)
+                {
+                    imagewg[sel] = gtk_image_new_from_file(cache_image(pic_PID, pic_nativePath, pic_local_url));
+                }
             }
             json_reader_end_element(reader);
             gtk_grid_attach(GTK_GRID(grid_today), imagewg[sel], sel, 0, 1, 1);
