@@ -3,7 +3,7 @@
 #include "../include/fetchrm.h"
 
 /* 读取json member */
-static const char *member_reader(JsonReader *reader, const char *member_name)
+static const char *member_reader_string(JsonReader *reader, const char *member_name)
 {
     if (!json_reader_read_member(reader, member_name))
     {
@@ -15,6 +15,18 @@ static const char *member_reader(JsonReader *reader, const char *member_name)
     return member_value;
 }
 
+static gint64 member_reader_int(JsonReader *reader, const char *member_name)
+{
+    if (!json_reader_read_member(reader, member_name))
+    {
+        json_reader_end_member(reader);
+        return 0;
+    }
+    gint64 member_value = json_reader_get_int_value(reader);
+    json_reader_end_member(reader);
+    return member_value;
+}
+
 void activate(GtkApplication *app, gpointer user_data)
 {
     GtkWidget *window = gtk_application_window_new(app);
@@ -22,8 +34,8 @@ void activate(GtkApplication *app, gpointer user_data)
     GtkWidget *label2 = gtk_label_new("Todo:\nIt's coming!");
 
     GtkWidget *grid_today = gtk_grid_new();
-    gtk_grid_set_column_homogeneous(GTK_GRID(grid_today), TRUE);
-
+    gtk_grid_set_column_homogeneous(GTK_GRID(grid_today), FALSE);
+    gtk_grid_set_row_homogeneous(GTK_GRID(grid_today), FALSE);
     curl_global_init(CURL_GLOBAL_ALL);
     JsonNode *td_data = today_img();
     curl_global_cleanup();
@@ -36,16 +48,28 @@ void activate(GtkApplication *app, gpointer user_data)
         {
             if (json_reader_read_element(reader, sel))
             {
-                const char *pic_PID  = member_reader(reader, "PID");
-                const char *pic_local_url = member_reader(reader, "local_url");
-                const char *pic_nativePath = member_reader(reader, "nativePath");
+                const char *pic_PID  = member_reader_string(reader, "PID");
+                const char *pic_local_url = member_reader_string(reader, "local_url");
+                const char *pic_nativePath = member_reader_string(reader, "nativePath");
+                gint64 pic_old_width = member_reader_int(reader, "width");
+                gint64 pic_old_height = member_reader_int(reader, "height");
+                gint64 pic_new_width = 360;
+                gint64 pic_new_height = 360 * pic_old_height / pic_old_width;
                 if (pic_PID && pic_local_url && pic_nativePath)
                 {
-                    imagewg[sel] = gtk_image_new_from_file(cache_image(pic_PID, pic_nativePath, pic_local_url));
+                    char *img_path = cache_image(pic_PID, pic_nativePath, pic_local_url);
+                    imagewg[sel] = gtk_image_new_from_file(img_path);
                 }
+                if (sel == 0)
+                {
+                    gtk_grid_attach(GTK_GRID(grid_today), imagewg[0], 0, 0, pic_new_width, pic_new_height);
+                } else
+                {
+                    gtk_grid_attach_next_to(GTK_GRID(grid_today), imagewg[sel], imagewg[sel - 1], GTK_POS_RIGHT, pic_new_width, pic_new_height);
+                }
+                
             }
             json_reader_end_element(reader);
-            gtk_grid_attach(GTK_GRID(grid_today), imagewg[sel], sel, 0, 1, 1);
         }
     }
 

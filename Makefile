@@ -1,6 +1,3 @@
-CC = clang
-CXX = clang++
-
 SRC = $(wildcard src/*.c)
 OBJ = $(SRC:.c=.o)
 EXEC_DIR = bin

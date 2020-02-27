@@ -22,6 +22,7 @@ static CURLcode fetch_image_to_file(const char *URL, const char *DEST_FILE)
     curl_easy_setopt(handle, CURLOPT_WRITEDATA, dest_pointer); 
     CURLcode status = curl_easy_perform(handle);
     curl_easy_cleanup(handle);
+    fclose(dest_pointer);
 
     return status;
 }
